@@ -21,8 +21,8 @@ def matplotCanvas(wavelengths,intensities):
     if plotted== False: canvas._tkcanvas.pack(fill=tk.BOTH, expand=True,side=tk.TOP); plotted = True
     
 def matplotCanvasBTN():
-    if backcal.get()==0: intensities = processedData
-    else: intensities = np.subtract(processedData,backcaldata)
+    if backcal.get()==0: intensities = processedData.copy()
+    elif backcal.get()==1: intensities = np.subtract(processedData,backcaldata)
     if deadpxcorr.get()==1:
         intensities[1] = (intensities[0] + intensities[2])/2
         intensities[1300] = (intensities[1299] + intensities[1301])/2
@@ -50,7 +50,7 @@ def acqdata():
     else:
         for i in range(avgcount):
             DATA[i] = spec.intensities()
-        processedData = np.sum(DATA,axis=0)/avgcount
+        processedData = np.divide(np.sum(DATA,axis=0),avgcount)
     spec.close()
 
     if backcal.get() == 0: matplotCanvas(spec.wavelengths(),processedData)
@@ -67,10 +67,22 @@ def acqbackcalib():
     else:
         for i in range(avgcount):
             DATA[i] = spec.intensities()
-        processedData = np.sum(DATA,axis=0)/avgcount
+        processedData = np.divide(np.sum(DATA,axis=0),avgcount)
     spec.close()
     global backcaldata
     backcaldata = processedData
+
+
+def fsave():
+    f = open(fileentry.get(),"w")
+    correctedData = processedData.copy()
+    correctedData[1] = (correctedData[0] + correctedData[2])/2
+    correctedData[1300] = (correctedData[1299] + correctedData[1301])/2
+    correctedBackData = backcaldata.copy()
+    correctedBackData[1] = (correctedBackData[0] + correctedBackData[2])/2
+    correctedBackData[1300] = (correctedBackData[1299] + correctedBackData[1301])/2
+    np.savetxt(f,np.transpose([spec.wavelengths(),processedData,correctedData,backcaldata,np.subtract(correctedData,correctedBackData)]))
+
 
 plotted = False
 spec = sp.Spectrometer.from_serial_number()
@@ -123,5 +135,13 @@ deadon = tk.Radiobutton(master=setframe, text = "On", variable=deadpxcorr, value
 deadlabel.grid(row=6,column=1,columnspan=2,padx=5,pady=6)
 deadoff.grid(row=7,column=1,padx=5,pady=6)
 deadon.grid(row=7,column=2,padx=5,pady=6)
+
+filelabel = tk.Label(master=setframe,text="Saving data to file",font=16)
+filelabel.grid(row=9,column=1, columnspan=2, padx=5, pady=5)
+fileentry = tk.Entry(master=setframe,font=14,width=36)
+fileentry.insert(index=0,string="measurement.txt")
+fileentry.grid(row=10,column=1, columnspan=2, padx=5, pady=5)
+filesavebutton = tk.Button(master=setframe,text="Save",command=fsave)
+filesavebutton.grid(row=11,column=1,columnspan=2,padx=5,pady=5)
 
 window.mainloop()
