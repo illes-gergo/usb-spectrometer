@@ -10,6 +10,9 @@ def matplotCanvas(wavelengths,intensities):
         f = Figure(figsize=(6,6),dpi=100)
         a = f.add_subplot(111)
     if plotted: a.axes.clear()
+    if deadpxcorr.get()==1:
+        intensities[1] = (intensities[0] + intensities[2])/2
+        intensities[1300] = (intensities[1299] + intensities[1301])/2
     a.plot(wavelengths,intensities)
     if plotted == False: canvas = FigureCanvasTkAgg(f,master=plotframe)
     canvas.draw()
@@ -20,6 +23,9 @@ def matplotCanvas(wavelengths,intensities):
 def matplotCanvasBTN():
     if backcal.get()==0: intensities = processedData
     else: intensities = np.subtract(processedData,backcaldata)
+    if deadpxcorr.get()==1:
+        intensities[1] = (intensities[0] + intensities[2])/2
+        intensities[1300] = (intensities[1299] + intensities[1301])/2
     global plotted, a, f, canvas
     if plotted==False:
         f = Figure(figsize=(6,6),dpi=100)
@@ -71,7 +77,8 @@ spec = sp.Spectrometer.from_serial_number()
 backcaldata = [0]*spec.wavelengths()
 processedData = [0]*spec.wavelengths()
 window = tk.Tk()
-backcal = tk.IntVar()
+backcal = tk.IntVar(value=0)
+deadpxcorr = tk.IntVar(value=0)
 title = tk.Label(master=window, text="OceanOptics USB2000+ software by IG",font=16)
 title.pack()
 plotframe = tk.Frame(master=window, width=600,height=600)
@@ -80,10 +87,10 @@ setframe = tk.Frame(master=window, width=300,height=600)
 setframe.pack(fill=tk.BOTH,side=tk.LEFT,expand=True)
 plotbutton = tk.Button(master=setframe,text="Plot",font=16,command=matplotCanvasBTN)
 
-plotbutton.grid(row=6,column=1,columnspan=1,padx=5,pady=6)
+plotbutton.grid(row=8,column=1,columnspan=1,padx=5,pady=5)
 measbutton = tk.Button(master=setframe,text="Measure and plot",font=16,command=acqdata)
 
-measbutton.grid(row=6,column=2,columnspan=1,padx=5,pady=6)
+measbutton.grid(row=8,column=2,columnspan=1,padx=5,pady=5)
 
 timelabel = tk.Label(master=setframe,text="Integration time (s)",font=16)
 timeentry = tk.Entry(master=setframe,font=16)
@@ -109,4 +116,12 @@ bckoff.grid(row=4,column=1,padx=5,pady=6)
 
 bcksetbutton = tk.Button(master=setframe,text="Set background reference data",command=acqbackcalib)
 bcksetbutton.grid(row=5,column=1,columnspan=2,padx=5,pady=6)
+
+deadlabel = tk.Label(master=setframe,text="Hard-coded dead pixel correction")
+deadoff = tk.Radiobutton(master=setframe, text = "Off", variable=deadpxcorr, value=0)
+deadon = tk.Radiobutton(master=setframe, text = "On", variable=deadpxcorr, value=1)
+deadlabel.grid(row=6,column=1,columnspan=2,padx=5,pady=6)
+deadoff.grid(row=7,column=1,padx=5,pady=6)
+deadon.grid(row=7,column=2,padx=5,pady=6)
+
 window.mainloop()
