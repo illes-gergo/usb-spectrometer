@@ -3,22 +3,34 @@ import tkinter as tk
 import seabreeze.spectrometers as sp
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import threading
+import time
+
+def InitPlotArea():
+    global a, f, canvas
+    f = Figure(figsize=(6,6),dpi=100)
+    a = f.add_subplot(1,1,1)
+    a.set_xlabel("Wavelength (nm)")
+    a.set_ylabel("Intenisty (arb. u.)")
+
+    canvas = FigureCanvasTkAgg(f,master=plotframe)
+    canvas.draw()
+
+    toolbar=NavigationToolbar2Tk(canvas, plotframe, pack_toolbar=False)
+
+    toolbar.pack(side=tk.TOP,expand=True,fill=tk.X)
+    canvas.get_tk_widget().pack(fill=tk.BOTH,expand=True)
 
 def matplotCanvas(wavelengths,intensities):
-    global plotted, a, f, canvas
-    if plotted==False:
-        f = Figure(figsize=(6,6),dpi=100)
-        a = f.add_subplot(111)
-    if plotted: a.axes.clear()
+    global a, f, canvas
+    a.axes.clear()
+    a.set_xlabel("Wavelength (nm)")
+    a.set_ylabel("Intenisty (arb. u.)")
     if deadpxcorr.get()==1:
         intensities[1] = (intensities[0] + intensities[2])/2
         intensities[1300] = (intensities[1299] + intensities[1301])/2
     a.plot(wavelengths,intensities)
-    if plotted == False: canvas = FigureCanvasTkAgg(f,master=plotframe)
     canvas.draw()
-    if plotted == False: canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True); toolbar=NavigationToolbar2Tk(canvas,plotframe)
-    
-    if plotted== False: canvas._tkcanvas.pack(fill=tk.BOTH, expand=True,side=tk.TOP); plotted = True
     
 def matplotCanvasBTN():
     if backcal.get()==0: intensities = processedData.copy()
@@ -26,22 +38,17 @@ def matplotCanvasBTN():
     if deadpxcorr.get()==1:
         intensities[1] = (intensities[0] + intensities[2])/2
         intensities[1300] = (intensities[1299] + intensities[1301])/2
-    global plotted, a, f, canvas
-    if plotted==False:
-        f = Figure(figsize=(6,6),dpi=100)
-        a = f.add_subplot(111)
-    if plotted: a.axes.clear()
+    global a, f, canvas
+    a.axes.clear()
+    a.set_xlabel("Wavelength (nm)")
+    a.set_ylabel("Intenisty (arb. u.)")
     a.plot(spec.wavelengths(),intensities)
-    if plotted == False: canvas = FigureCanvasTkAgg(f,master=plotframe)
     canvas.draw()
-    if plotted == False: canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True); toolbar=NavigationToolbar2Tk(canvas,plotframe)
-    
-    if plotted== False: canvas._tkcanvas.pack(fill=tk.BOTH, expand=True,side=tk.TOP); plotted = True
     
 def acqdata():
     global processedData
     spec.open()
-    spec.integration_time_micros(float(timeentry.get())*1e6)
+    spec.integration_time_micros(float(timeentry.get())*1e3)
     avgcount = int(avgentry.get())
     DATA=[[0]*len(spec.wavelengths())]*avgcount
     
@@ -58,7 +65,7 @@ def acqdata():
 
 def acqbackcalib():
     spec.open()
-    spec.integration_time_micros(float(timeentry.get())*1e6)
+    spec.integration_time_micros(float(timeentry.get())*1e3)
     avgcount = int(avgentry.get())
     DATA=[[0]*len(spec.wavelengths())]*avgcount
     
@@ -83,20 +90,43 @@ def fsave():
     correctedBackData[1300] = (correctedBackData[1299] + correctedBackData[1301])/2
     np.savetxt(f,np.transpose([spec.wavelengths(),processedData,correctedData,backcaldata,np.subtract(correctedData,correctedBackData)]))
 
+def contacq():
+    while contmode:
+        acqdata()
+        time.sleep(0.01)
 
-plotted = False
+def contstart():
+    global contmode
+    contmode = True
+    timeentry.config(state="disabled")
+    avgentry.config(state="disabled")
+    measbutton.config(state= "disabled")
+    plotbutton.config(state="disabled")
+    threading.Thread(target=contacq).start()
+    
+
+def contstop():
+    global contmode
+    contmode=False
+    timeentry.config(state="normal")
+    avgentry.config(state="normal")
+    measbutton.config(state= "normal")
+    plotbutton.config(state="normal")
+
 spec = sp.Spectrometer.from_serial_number()
 backcaldata = [0]*spec.wavelengths()
 processedData = [0]*spec.wavelengths()
 window = tk.Tk()
 backcal = tk.IntVar(value=0)
 deadpxcorr = tk.IntVar(value=0)
+contmode = False
+
 title = tk.Label(master=window, text="OceanOptics USB2000+ software by IG",font=16)
 title.pack()
 plotframe = tk.Frame(master=window, width=600,height=600)
 plotframe.pack(fill=tk.BOTH,side=tk.LEFT,expand=True)
 setframe = tk.Frame(master=window, width=300,height=600)
-setframe.pack(fill=tk.BOTH,side=tk.LEFT,expand=True)
+setframe.pack(fill=tk.BOTH,side=tk.LEFT,expand=False)
 plotbutton = tk.Button(master=setframe,text="Plot",font=16,command=matplotCanvasBTN)
 
 plotbutton.grid(row=8,column=1,columnspan=1,padx=5,pady=5)
@@ -104,9 +134,9 @@ measbutton = tk.Button(master=setframe,text="Measure and plot",font=16,command=a
 
 measbutton.grid(row=8,column=2,columnspan=1,padx=5,pady=5)
 
-timelabel = tk.Label(master=setframe,text="Integration time (s)",font=16)
+timelabel = tk.Label(master=setframe,text="Integration time (ms)",font=16)
 timeentry = tk.Entry(master=setframe,font=16)
-timeentry.insert(0,"1")
+timeentry.insert(0,"100")
 timelabel.grid(row=1,column=1,padx=5, pady=5)
 timeentry.grid(row=2,column=1,padx=5, pady=5)
 
@@ -143,5 +173,18 @@ fileentry.insert(index=0,string="measurement.txt")
 fileentry.grid(row=10,column=1, columnspan=2, padx=5, pady=5)
 filesavebutton = tk.Button(master=setframe,text="Save",command=fsave)
 filesavebutton.grid(row=11,column=1,columnspan=2,padx=5,pady=5)
+
+contlabel = tk.Label(master=setframe,text="Continous Mode",font=16)
+contlabel.grid(row=12,column=1, columnspan=2, padx=5, pady=5)
+
+contstartbutton = tk.Button(master=setframe,text="Start", font=14 ,command=contstart)
+contstartbutton.grid(row=13,column=1,columnspan=1,padx=5,pady=5)
+
+contstopbutton = tk.Button(master=setframe,text="Stop", font=14 ,command=contstop)
+contstopbutton.grid(row=13,column=2,columnspan=1,padx=5,pady=5)
+
+
+InitPlotArea()
+
 
 window.mainloop()
