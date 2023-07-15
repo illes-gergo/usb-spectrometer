@@ -102,6 +102,9 @@ def contstart():
     avgentry.config(state="disabled")
     measbutton.config(state= "disabled")
     plotbutton.config(state="disabled")
+    filesavebutton.config(state="disabled")
+    contstartbutton.config(state="disabled")
+    bcksetbutton.config(state="disabled")
     threading.Thread(target=contacq).start()
     
 
@@ -112,6 +115,9 @@ def contstop():
     avgentry.config(state="normal")
     measbutton.config(state= "normal")
     plotbutton.config(state="normal")
+    filesavebutton.config(state="normal")
+    contstartbutton.config(state="normal")
+    bcksetbutton.config(state="normal")
 
 spec = sp.Spectrometer.from_serial_number()
 backcaldata = [0]*spec.wavelengths()
@@ -135,14 +141,14 @@ measbutton = tk.Button(master=setframe,text="Measure and plot",font=16,command=a
 measbutton.grid(row=8,column=2,columnspan=1,padx=5,pady=5)
 
 timelabel = tk.Label(master=setframe,text="Integration time (ms)",font=16)
-timeentry = tk.Entry(master=setframe,font=16)
+timeentry = tk.Entry(master=setframe,font=16, justify=tk.CENTER)
 timeentry.insert(0,"100")
 timelabel.grid(row=1,column=1,padx=5, pady=5)
 timeentry.grid(row=2,column=1,padx=5, pady=5)
 
 
 avglabel = tk.Label(master=setframe,text="Averaging count",font=16)
-avgentry = tk.Entry(master=setframe,font=16)
+avgentry = tk.Entry(master=setframe,font=16, justify=tk.CENTER)
 avgentry.insert(0,"1")
 
 avglabel.grid(row=1,column=2,padx=5, pady=5)
@@ -168,7 +174,7 @@ deadon.grid(row=7,column=2,padx=5,pady=6)
 
 filelabel = tk.Label(master=setframe,text="Saving data to file",font=16)
 filelabel.grid(row=9,column=1, columnspan=2, padx=5, pady=5)
-fileentry = tk.Entry(master=setframe,font=14,width=36)
+fileentry = tk.Entry(master=setframe,font=14,width=36, justify=tk.CENTER)
 fileentry.insert(index=0,string="measurement.txt")
 fileentry.grid(row=10,column=1, columnspan=2, padx=5, pady=5)
 filesavebutton = tk.Button(master=setframe,text="Save",command=fsave)
